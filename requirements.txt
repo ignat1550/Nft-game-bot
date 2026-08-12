@@ -1,0 +1,3 @@
+aiogram>=3.20,<4.0
+aiohttp>=3.9
+psycopg[binary]>=3.2
