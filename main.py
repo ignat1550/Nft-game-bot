@@ -686,10 +686,9 @@ def get_statistics():
 
 LUXURY_NFTS = [
     ("💎 Котел", 10),
-    ("👑 Рюкз", 15),
-    ("🌌 Календарь", 15),
-    ("🔥 Глазик", 20),
-    ("🦋 Торт за 50 зв", 40),
+    ("👑 Рюкз", 20),
+    ("🌌 Календарь", 30),
+    ("🔥 Глазик", 40),
 ]
 
 
@@ -1390,8 +1389,8 @@ async def cases(callback: CallbackQuery):
         "🎁 <b>Кейсы</b>\n\n"
 
         "🎫 <b>Билитер</b> — 100 ⭐\n"
-        "🎫 Обычный билет — 97%\n"
-        "🏆 Золотой билет — 3%\n"
+        "🎫 Обычный билет — 80%\n"
+        "🏆 Золотой билет — 20%\n"
         "🏆 Золотой билет даёт NFT.\n\n"
 
         "💎 <b>Лакшери</b> — 2000 ⭐\n"
@@ -1402,8 +1401,8 @@ async def cases(callback: CallbackQuery):
         "🦋 Торт за 50 зв — 40%\n\n"
 
         "😵 <b>Наркоман</b> — 100 ⭐\n"
-        "⭐ 50 звёзд — 95%\n"
-        "🔥 Глазик — 5%",
+        "⭐ 50 звёзд — 80%\n"
+        "🔥 Глазик — 20%",
         parse_mode="HTML",
         reply_markup=kb.as_markup()
     )
@@ -1433,7 +1432,7 @@ async def bileter(callback: CallbackQuery):
 
         return
 
-    if random.random() < 0.97:
+    if random.random() < 0.80:
 
         add_stars(
             user_id,
@@ -1550,7 +1549,7 @@ async def nark(callback: CallbackQuery):
 
         return
 
-    if random.random() < 0.95:
+    if random.random() < 0.80:
 
         add_stars(
             user_id,
