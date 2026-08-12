@@ -43,47 +43,27 @@ PAYMENT_ADMINS = [
 
 
 # ============================================================
-# NFT
+# NFT / CASE CHANCES
 # ============================================================
 
 LUXURY_NFTS = [
-    {
-        "name": "💎 Котел",
-        "chance": 10,
-    },
-    {
-        "name": "👑 Рюкз",
-        "chance": 15,
-    },
-    {
-        "name": "🌌 Календарь",
-        "chance": 15,
-    },
-    {
-        "name": "🔥 Глазик",
-        "chance": 20,
-    },
-    {
-        "name": "🦋 Торт за 50 зв",
-        "chance": 40,
-    },
+    ("💎 Котел", 10),
+    ("👑 Рюкз", 15),
+    ("🌌 Календарь", 15),
+    ("🔥 Глазик", 20),
+    ("🦋 Торт за 50 зв", 40),
 ]
 
 
 # ============================================================
-# CONFIG CHECK
+# CHECK ENV
 # ============================================================
 
 if not BOT_TOKEN:
-    raise RuntimeError(
-        "Не задан BOT_TOKEN в Railway Variables."
-    )
+    raise RuntimeError("BOT_TOKEN is not set")
 
 if not DATABASE_URL:
-    raise RuntimeError(
-        "Не задан DATABASE_URL. "
-        "Подключи PostgreSQL к Railway."
-    )
+    raise RuntimeError("DATABASE_URL is not set")
 
 if DATABASE_URL.startswith("postgres://"):
     DATABASE_URL = DATABASE_URL.replace(
@@ -94,7 +74,7 @@ if DATABASE_URL.startswith("postgres://"):
 
 
 # ============================================================
-# TELEGRAM
+# TELEGRAM API
 # ============================================================
 
 api_server = TelegramAPIServer.from_base(
@@ -114,7 +94,7 @@ dp = Dispatcher()
 
 
 # ============================================================
-# FSM
+# STATES
 # ============================================================
 
 class BroadcastState(StatesGroup):
@@ -143,7 +123,6 @@ def db_connect():
 def init_database():
 
     with db_connect() as conn:
-
         with conn.cursor() as cur:
 
             cur.execute("""
@@ -178,8 +157,6 @@ def init_database():
 
         conn.commit()
 
-    print("✅ Database initialized")
-
 
 def ensure_user(
     user_id: int,
@@ -187,7 +164,6 @@ def ensure_user(
 ):
 
     with db_connect() as conn:
-
         with conn.cursor() as cur:
 
             cur.execute("""
@@ -209,7 +185,6 @@ def ensure_user(
 def get_balance(user_id: int) -> int:
 
     with db_connect() as conn:
-
         with conn.cursor() as cur:
 
             cur.execute("""
@@ -237,7 +212,6 @@ def change_stars(
     ensure_user(user_id)
 
     with db_connect() as conn:
-
         with conn.cursor() as cur:
 
             cur.execute("""
@@ -271,7 +245,6 @@ def remove_stars(
 ) -> bool:
 
     with db_connect() as conn:
-
         with conn.cursor() as cur:
 
             cur.execute("""
@@ -318,7 +291,6 @@ def add_nft(
     ensure_user(user_id)
 
     with db_connect() as conn:
-
         with conn.cursor() as cur:
 
             cur.execute("""
@@ -338,7 +310,6 @@ def add_nft(
 def get_nfts(user_id: int):
 
     with db_connect() as conn:
-
         with conn.cursor() as cur:
 
             cur.execute("""
@@ -356,7 +327,6 @@ def get_nfts(user_id: int):
 def get_all_user_ids():
 
     with db_connect() as conn:
-
         with conn.cursor() as cur:
 
             cur.execute("""
@@ -375,7 +345,6 @@ def get_all_user_ids():
 def get_statistics():
 
     with db_connect() as conn:
-
         with conn.cursor() as cur:
 
             cur.execute("""
@@ -406,23 +375,20 @@ def get_statistics():
 # RANDOM NFT
 # ============================================================
 
-def get_random_luxury_nft():
+def random_luxury_nft():
 
-    roll = random.uniform(
-        0,
-        100
-    )
+    number = random.uniform(0, 100)
 
     current = 0
 
-    for item in LUXURY_NFTS:
+    for name, chance in LUXURY_NFTS:
 
-        current += item["chance"]
+        current += chance
 
-        if roll <= current:
-            return item["name"]
+        if number <= current:
+            return name
 
-    return LUXURY_NFTS[-1]["name"]
+    return LUXURY_NFTS[-1][0]
 
 
 # ============================================================
@@ -548,22 +514,20 @@ async def balance(callback: CallbackQuery):
 @dp.callback_query(F.data == "topup")
 async def topup(callback: CallbackQuery):
 
-    admins = "\n".join(
-        f"• {x}"
-        for x in PAYMENT_ADMINS
+    admins_text = "\n".join(
+        f"• {admin}"
+        for admin in PAYMENT_ADMINS
     )
 
     await callback.message.edit_text(
         "💳 <b>Пополнение баланса</b>\n\n"
-        "Для пополнения ⭐ напиши одному "
-        "из администраторов:\n\n"
-        f"{admins}\n\n"
+        "Чтобы пополнить баланс ⭐, "
+        "напиши одному из администраторов:\n\n"
+        f"{admins_text}\n\n"
         "После оплаты отправь админу "
         "свой Telegram ID.\n\n"
         "🆔 Твой ID:\n"
-        f"<code>{callback.from_user.id}</code>\n\n"
-        "После проверки оплаты администратор "
-        "зачислит звёзды.",
+        f"<code>{callback.from_user.id}</code>",
         parse_mode="HTML",
         reply_markup=back_menu()
     )
@@ -585,14 +549,14 @@ async def profile(callback: CallbackQuery):
         callback.from_user.username or ""
     )
 
-    nfts = get_nfts(user_id)
+    user_nfts = get_nfts(user_id)
 
     await callback.message.edit_text(
         "👤 <b>Профиль</b>\n\n"
         f"🆔 ID: <code>{user_id}</code>\n"
         f"👤 Username: @{callback.from_user.username or 'нет'}\n"
         f"⭐ Баланс: <b>{get_balance(user_id)} ⭐</b>\n"
-        f"🎁 NFT: <b>{len(nfts)}</b>",
+        f"🎁 NFT: <b>{len(user_nfts)}</b>",
         parse_mode="HTML",
         reply_markup=back_menu()
     )
@@ -601,7 +565,7 @@ async def profile(callback: CallbackQuery):
 
 
 # ============================================================
-# NFT
+# NFT INVENTORY
 # ============================================================
 
 @dp.callback_query(F.data == "nfts")
@@ -626,7 +590,8 @@ async def nfts(callback: CallbackQuery):
 
             text += (
                 f"🎁 <b>{escape(nft['name'])}</b>\n"
-                f"📦 Получен: {escape(nft['source'])}\n"
+                f"📦 Источник: "
+                f"{escape(nft['source'])}\n"
                 f"ID: <code>{nft['id']}</code>\n\n"
             )
 
@@ -674,19 +639,19 @@ async def cases(callback: CallbackQuery):
         "🎁 <b>Кейсы</b>\n\n"
 
         "🎫 <b>Билитер</b> — 100 ⭐\n"
-        "97% → 50 ⭐\n"
-        "3% → золотой билет → NFT\n\n"
+        "⭐ 50 звёзд — 97%\n"
+        "🏆 Золотой билет — 3%\n\n"
 
         "💎 <b>Лакшери</b> — 2000 ⭐\n"
         "💎 Котел — 10%\n"
         "👑 Рюкз — 15%\n"
         "🌌 Календарь — 15%\n"
         "🔥 Глазик — 20%\n"
-        "🦋 Торт — 40%\n\n"
+        "🦋 Торт за 50 зв — 40%\n\n"
 
         "😵 <b>Наркоман</b> — 100 ⭐\n"
-        "95% → 50 ⭐\n"
-        "5% → Глазик",
+        "⭐ 50 звёзд — 95%\n"
+        "🔥 Глазик — 5%",
         parse_mode="HTML",
         reply_markup=kb.as_markup()
     )
@@ -716,9 +681,6 @@ async def bileter(callback: CallbackQuery):
 
         return
 
-    # 97% обычный билет
-    # 3% золотой билет
-
     if random.random() < 0.97:
 
         change_stars(
@@ -727,7 +689,7 @@ async def bileter(callback: CallbackQuery):
             "Билитер: обычный билет"
         )
 
-        text = (
+        result = (
             "🎫 <b>Билитер</b>\n\n"
             "🎫 Выпал обычный билет!\n\n"
             "⭐ Награда: <b>50 ⭐</b>"
@@ -735,7 +697,7 @@ async def bileter(callback: CallbackQuery):
 
     else:
 
-        nft = get_random_luxury_nft()
+        nft = random_luxury_nft()
 
         add_nft(
             user_id,
@@ -743,21 +705,21 @@ async def bileter(callback: CallbackQuery):
             "Золотой билет"
         )
 
-        await notify_admins(
+        await notify_nft(
             user_id,
             callback.from_user.username,
             nft,
             "Билитер — золотой билет"
         )
 
-        text = (
-            "🏆 <b>ЗОЛОТОЙ БИЛЕТ!</b> 🔥\n\n"
-            "Тебе выпал случайный NFT:\n\n"
-            f"🎁 <b>{escape(nft)}</b>"
+        result = (
+            "🏆 <b>ЗОЛОТОЙ БИЛЕТ!</b>\n\n"
+            "🎁 Тебе выпал NFT:\n\n"
+            f"<b>{escape(nft)}</b>"
         )
 
     await callback.message.edit_text(
-        text,
+        result,
         parse_mode="HTML",
         reply_markup=back_menu()
     )
@@ -787,7 +749,7 @@ async def luxury(callback: CallbackQuery):
 
         return
 
-    nft = get_random_luxury_nft()
+    nft = random_luxury_nft()
 
     add_nft(
         user_id,
@@ -795,7 +757,7 @@ async def luxury(callback: CallbackQuery):
         "Лакшери"
     )
 
-    await notify_admins(
+    await notify_nft(
         user_id,
         callback.from_user.username,
         nft,
@@ -844,7 +806,7 @@ async def nark(callback: CallbackQuery):
             "Наркоман: 50 звёзд"
         )
 
-        text = (
+        result = (
             "😵 <b>Наркоман</b>\n\n"
             "⭐ Выпало: <b>50 ⭐</b>"
         )
@@ -859,21 +821,21 @@ async def nark(callback: CallbackQuery):
             "Наркоман"
         )
 
-        await notify_admins(
+        await notify_nft(
             user_id,
             callback.from_user.username,
             nft,
             "Наркоман"
         )
 
-        text = (
-            "😵 <b>НАРКОМАН!</b> 🔥\n\n"
+        result = (
+            "😵 <b>НАРКОМАН!</b>\n\n"
             "👁 Выпал NFT:\n\n"
             f"<b>{escape(nft)}</b>"
         )
 
     await callback.message.edit_text(
-        text,
+        result,
         parse_mode="HTML",
         reply_markup=back_menu()
     )
@@ -882,17 +844,17 @@ async def nark(callback: CallbackQuery):
 
 
 # ============================================================
-# NOTIFY ADMINS ABOUT NFT
+# NFT ADMIN NOTIFICATION
 # ============================================================
 
-async def notify_admins(
+async def notify_nft(
     user_id: int,
     username: str | None,
     nft_name: str,
     case_name: str
 ):
 
-    user_text = (
+    user = (
         f"@{username}"
         if username
         else "без username"
@@ -900,7 +862,7 @@ async def notify_admins(
 
     text = (
         "🚨 <b>ВЫПАЛ NFT!</b>\n\n"
-        f"👤 Игрок: {escape(user_text)}\n"
+        f"👤 Игрок: {escape(user)}\n"
         f"🆔 ID: <code>{user_id}</code>\n"
         f"🎁 Кейс: <b>{escape(case_name)}</b>\n"
         f"🖼 NFT: <b>{escape(nft_name)}</b>"
@@ -916,28 +878,15 @@ async def notify_admins(
                 parse_mode="HTML"
             )
 
-        except Exception as error:
-
-            print(
-                f"NFT notification error "
-                f"{admin_id}: {error}"
-            )
+        except Exception:
+            pass
 
 
 # ============================================================
 # ADMIN PANEL
 # ============================================================
 
-@dp.message(Command("admin"))
-async def admin_command(message: Message):
-
-    if message.from_user.id not in ADMINS:
-
-        await message.answer(
-            "⛔ У тебя нет доступа."
-        )
-
-        return
+def admin_keyboard():
 
     kb = InlineKeyboardBuilder()
 
@@ -968,22 +917,40 @@ async def admin_command(message: Message):
 
     kb.adjust(1)
 
+    return kb.as_markup()
+
+
+@dp.message(Command("admin"))
+async def admin_command(message: Message):
+
+    if message.from_user.id not in ADMINS:
+
+        await message.answer(
+            "⛔ У тебя нет доступа."
+        )
+
+        return
+
     await message.answer(
         "👑 <b>АДМИН-ПАНЕЛЬ</b>\n\n"
         "Выбери действие:",
         parse_mode="HTML",
-        reply_markup=kb.as_markup()
+        reply_markup=admin_keyboard()
     )
 
 
 # ============================================================
-# ADMIN ADD
+# ADMIN ADD STARS
 # ============================================================
 
 @dp.callback_query(F.data == "admin_add")
 async def admin_add(callback: CallbackQuery):
 
     if callback.from_user.id not in ADMINS:
+        await callback.answer(
+            "⛔ Нет доступа",
+            show_alert=True
+        )
         return
 
     await callback.message.answer(
@@ -1006,14 +973,16 @@ async def admin_add(callback: CallbackQuery):
 async def admin_remove(callback: CallbackQuery):
 
     if callback.from_user.id not in ADMINS:
+        await callback.answer(
+            "⛔ Нет доступа",
+            show_alert=True
+        )
         return
 
     await callback.message.answer(
         "➖ <b>Забрать звёзды</b>\n\n"
         "Отправь:\n"
-        "<code>ID количество</code>\n\n"
-        "Например:\n"
-        "<code>123456789 500</code>",
+        "<code>/remove ID количество</code>",
         parse_mode="HTML"
     )
 
@@ -1021,23 +990,25 @@ async def admin_remove(callback: CallbackQuery):
 
 
 # ============================================================
-# ADMIN GIVING
+# ADMIN NFT
 # ============================================================
 
 @dp.callback_query(F.data == "admin_giving")
 async def admin_giving(callback: CallbackQuery):
 
     if callback.from_user.id not in ADMINS:
+        await callback.answer(
+            "⛔ Нет доступа",
+            show_alert=True
+        )
         return
 
     await callback.message.answer(
         "🎁 <b>Выдать NFT</b>\n\n"
-        "Используй команду:\n\n"
-        "<code>/giving ID название_NFT</code>\n\n"
-        "Например:\n"
-        "<code>/giving 123456789 Котел</code>\n\n"
-        "Или:\n"
-        "<code>/giving 123456789 Глазик</code>",
+        "Используй:\n"
+        "<code>/giving ID NFT</code>\n\n"
+        "Пример:\n"
+        "<code>/giving 123456789 Котел</code>",
         parse_mode="HTML"
     )
 
@@ -1066,10 +1037,9 @@ async def giving(message: Message):
     if len(parts) < 3:
 
         await message.answer(
-            "❌ Неверный формат.\n\n"
-            "Используй:\n"
+            "❌ Формат:\n"
             "<code>/giving ID NFT</code>\n\n"
-            "Например:\n"
+            "Пример:\n"
             "<code>/giving 123456789 Котел</code>",
             parse_mode="HTML"
         )
@@ -1077,30 +1047,22 @@ async def giving(message: Message):
         return
 
     try:
-
         user_id = int(parts[1])
-
     except ValueError:
-
         await message.answer(
             "❌ ID должен быть числом."
         )
-
         return
 
     nft_name = parts[2].strip()
 
     if not nft_name:
-
         await message.answer(
-            "❌ Укажи название NFT."
+            "❌ Укажи NFT."
         )
-
         return
 
-    # Проверяем существование пользователя
     with db_connect() as conn:
-
         with conn.cursor() as cur:
 
             cur.execute("""
@@ -1116,33 +1078,30 @@ async def giving(message: Message):
     if not user:
 
         await message.answer(
-            "❌ Этот пользователь ещё "
+            "❌ Пользователь ещё "
             "не запускал бота."
         )
 
         return
 
-    # Выдаём NFT
     add_nft(
         user_id,
         nft_name,
         f"Выдан администратором {message.from_user.id}"
     )
 
-    # Имя администратора
-    admin_username = (
+    admin_name = (
         f"@{message.from_user.username}"
         if message.from_user.username
         else f"ID {message.from_user.id}"
     )
 
-    # Сообщение ВСЕМ администраторам
     notify_text = (
-        "🎁 <b>ВЫДАН NFT</b>\n\n"
-        f"👑 Админ: <b>{escape(admin_username)}</b>\n"
+        "🎁 <b>NFT ВЫДАН</b>\n\n"
+        f"👑 Админ: <b>{escape(admin_name)}</b>\n"
         f"🆔 ID админа: "
         f"<code>{message.from_user.id}</code>\n\n"
-        f"👤 Получатель ID: "
+        f"👤 Получатель: "
         f"<code>{user_id}</code>\n"
         f"🎁 NFT: <b>{escape(nft_name)}</b>"
     )
@@ -1157,14 +1116,9 @@ async def giving(message: Message):
                 parse_mode="HTML"
             )
 
-        except Exception as error:
+        except Exception:
+            pass
 
-            print(
-                f"Giving notification error "
-                f"{admin_id}: {error}"
-            )
-
-    # Уведомляем получателя
     try:
 
         await bot.send_message(
@@ -1174,19 +1128,14 @@ async def giving(message: Message):
             parse_mode="HTML"
         )
 
-    except Exception as error:
-
-        print(
-            f"User notification error "
-            f"{user_id}: {error}"
-        )
+    except Exception:
+        pass
 
     await message.answer(
         "✅ <b>NFT выдан</b>\n\n"
         f"👤 ID: <code>{user_id}</code>\n"
         f"🎁 NFT: <b>{escape(nft_name)}</b>\n"
-        f"👑 Выдал: "
-        f"<b>{escape(admin_username)}</b>",
+        f"👑 Выдал: <b>{escape(admin_name)}</b>",
         parse_mode="HTML"
     )
 
@@ -1199,6 +1148,10 @@ async def giving(message: Message):
 async def admin_stats(callback: CallbackQuery):
 
     if callback.from_user.id not in ADMINS:
+        await callback.answer(
+            "⛔ Нет доступа",
+            show_alert=True
+        )
         return
 
     users, stars, nfts = get_statistics()
@@ -1215,16 +1168,22 @@ async def admin_stats(callback: CallbackQuery):
 
 
 # ============================================================
-# BROADCAST
+# BROADCAST BUTTON
 # ============================================================
 
 @dp.callback_query(F.data == "admin_broadcast")
-async def admin_broadcast(
+async def admin_broadcast_button(
     callback: CallbackQuery,
     state: FSMContext
 ):
 
     if callback.from_user.id not in ADMINS:
+
+        await callback.answer(
+            "⛔ Нет доступа",
+            show_alert=True
+        )
+
         return
 
     await state.set_state(
@@ -1233,15 +1192,51 @@ async def admin_broadcast(
 
     await callback.message.answer(
         "📢 <b>Рассылка</b>\n\n"
-        "Отправь текст, который нужно "
-        "разослать всем пользователям.\n\n"
-        "Для отмены:\n"
+        "Отправь текст сообщения, "
+        "которое нужно отправить всем "
+        "пользователям.\n\n"
+        "Для отмены напиши:\n"
         "<code>отмена</code>",
         parse_mode="HTML"
     )
 
     await callback.answer()
 
+
+# ============================================================
+# /BROADCAST
+# ============================================================
+
+@dp.message(Command("broadcast"))
+async def broadcast_command(
+    message: Message,
+    state: FSMContext
+):
+
+    if message.from_user.id not in ADMINS:
+
+        await message.answer(
+            "⛔ У тебя нет доступа."
+        )
+
+        return
+
+    await state.set_state(
+        BroadcastState.waiting_message
+    )
+
+    await message.answer(
+        "📢 <b>Рассылка</b>\n\n"
+        "Отправь текст сообщения.\n\n"
+        "Для отмены напиши:\n"
+        "<code>отмена</code>",
+        parse_mode="HTML"
+    )
+
+
+# ============================================================
+# BROADCAST PROCESS
+# ============================================================
 
 @dp.message(BroadcastState.waiting_message)
 async def process_broadcast(
@@ -1267,7 +1262,7 @@ async def process_broadcast(
     if not text:
 
         await message.answer(
-            "❌ Отправь текст."
+            "❌ Отправь текстовое сообщение."
         )
 
         return
@@ -1297,14 +1292,8 @@ async def process_broadcast(
 
             success += 1
 
-        except Exception as error:
-
+        except Exception:
             failed += 1
-
-            print(
-                f"Broadcast error "
-                f"{user_id}: {error}"
-            )
 
         await asyncio.sleep(0.05)
 
@@ -1318,7 +1307,7 @@ async def process_broadcast(
 
 
 # ============================================================
-# ADMIN TEXT
+# GIVE STARS BY MESSAGE
 # ============================================================
 
 @dp.message()
@@ -1346,16 +1335,10 @@ async def admin_text(message: Message):
     if amount <= 0:
         return
 
-    # Этот обработчик используется
-    # после кнопки "Выдать звёзды".
-    #
-    # Для безопасности ниже выдаём звёзды.
-    # Снятие делается через отдельную команду /remove.
-
     change_stars(
         user_id,
         amount,
-        f"Выдано админом {message.from_user.id}"
+        f"Выдано администратором {message.from_user.id}"
     )
 
     await message.answer(
@@ -1437,36 +1420,20 @@ async def remove_command(message: Message):
 
 
 # ============================================================
-# RUN
+# MAIN
 # ============================================================
 
 async def main():
-
-    print("----------------------------------------")
-    print("🌊 Wavegram Cases Bot")
-    print("----------------------------------------")
-    print("API:", API_SERVER)
-    print("Admins:", ADMINS)
-    print("----------------------------------------")
 
     init_database()
 
     try:
 
-        me = await bot.get_me()
+        await bot.get_me()
 
-        print(
-            f"✅ Бот подключён: @{me.username}"
-        )
-
-    except Exception as error:
-
-        print("❌ Ошибка подключения:")
-        print(type(error).__name__)
-        print(error)
+    except Exception:
 
         await bot.session.close()
-
         return
 
     try:
