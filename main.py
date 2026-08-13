@@ -856,8 +856,8 @@ async def cases(callback: CallbackQuery):
         "🎁 <b>Кейсы</b>\n\n"
 
         "🎫 <b>Билитер</b> — 100 ⭐\n"
-        "⭐ 50 звёзд — 80%\n"
-        "🏆 Золотой билет — 20%\n\n"
+        "⭐ 50 звёзд — 85%\n"
+        "🏆 Золотой билет — 15%\n\n"
 
         "💎 <b>Лакшери</b> — 2000 ⭐\n"
         "💎 Котел — 10%\n"
@@ -897,7 +897,7 @@ async def bileter(callback: CallbackQuery):
 
         return
 
-    if random.random() < 0.90:
+    if random.random() < 0.95:
 
         change_stars(
             user_id,
